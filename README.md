@@ -33,6 +33,6 @@ source init.sh
 
 ### 7. Run the workflow
 ```
-./workflow.sh
+nohup ./workflow.sh &
 ```
 
