@@ -1,0 +1,235 @@
+#!/usr/bin/env python
+# encoding: utf-8
+"""
+splicecomp
+
+Fisher exact tests on spicing event data
+"""
+from __future__ import division 
+import sys
+import csv
+import argparse
+import collections
+import operator
+
+from fisher import pvalue
+# Uses brent pedersen's model from pypi
+
+from scikits.statsmodels.sandbox.stats.multicomp import fdrcorrection0
+# BH correction is from http://statsmodels.sourceforge.net/devel/install.html
+
+# Custom modules to import:
+import spanki.spanki_parse_utils as spanki_parse_utils
+import spanki.spanki_utils as spanki_utils
+
+def tab_to_dict(tabfile):
+	"""
+	Generic make a dict from a table
+	Assumes first column has key
+	and there are column headers
+	"""
+	mytab = {}
+	lines = csv.reader(open(tabfile, 'rb'), delimiter='\t')
+	linecount = 0
+	for line in lines:
+		if (linecount < 1):
+			"""
+			First line is column header - use as keys
+			"""
+			keys = line
+		else: 
+			values = line
+			linedict = dict(zip(keys, values))
+			id = str(values[0])
+			mytab[id] = linedict 
+			#print "adding to ",linedict['juncid']
+		linecount += 1
+	return mytab
+
+def print_dict_sorted_ordered(mydict,fout,sortfield,fieldorder,keyname):
+	mykeys = fieldorder
+	mytup = []
+	print >> fout, keyname, "\t", '\t'.join(fieldorder)
+	# Get tuples of event and sort field
+	for x in mydict.keys():
+		mytup.append([x,mydict[x][sortfield]])
+	# Get list of keys sorted by sort field
+	#sorted_mytup = sorted(mytup.iteritems(), key=operator.itemgetter(1))
+	#sorted(student_tuples, key=itemgetter(2))
+	sorted_keys = sorted(mytup, key=operator.itemgetter(1), reverse=False)
+	mykeys = tuple(x[0] for x in sorted_keys)
+	for x in mykeys:
+		vals = []
+		for field in fieldorder:
+			vals.append(mydict[x][field])
+		print >> fout, x, '\t', '\t'.join(map(str,vals))
+
+class MyParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        #sys.stderr.write(desc)
+        self.print_help()
+        sys.exit(2)
+
+def parse_options(desc):
+	parser=MyParser(description=desc, formatter_class=argparse.RawTextHelpFormatter)
+	#parser=MyParser(description=desc, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument('-a', help='table A', action="store", dest="a")
+	parser.add_argument('-b', help='table B', action="store", dest="b")
+	parser.add_argument('-o', help="Output directory, default='splicecomp_out'", action="store", dest="o", default="splicecomp_out")
+	parser.add_argument('-cc', help="Coverage cutoff, default=0", action="store", type=int, dest="cc", default=0)
+	#parser.add_argument('-o', help='output file name', action="store", dest="o", default="astacomp.out")
+	args = parser.parse_args()
+	if len(sys.argv)==1:
+		parser.print_help()
+		sys.exit(1)
+	return args
+
+# Initialize parameters
+desc = '''
+-----------------------------------------------------------------
+splicecomp - Pairwise comparison of splicing events
+
+Takes two tables (a and b) of quantified events (astatabs, from
+the spankisplice program).  Performs Fishers' Exact Tests, followed
+by Benjamini and Hochberg FDR correction.
+-----------------------------------------------------------------
+'''
+
+args = parse_options(desc)
+tabfile1 = args.a
+tabfile2 = args.b
+outfile = args.o
+covcutoff = args.cc
+# Prepare output directory
+output_dir = outfile
+spanki_utils.prepare_output_dir(output_dir)
+
+comp_out_name = output_dir + "/event_compare.out"
+comp_out = open(comp_out_name, "w")
+
+#unadj_comp_out_name = output_dir + "/unadjusted_event_compare.out"
+#unadj_comp_out = open(unadj_comp_out_name, "w")
+
+
+def main():
+	#~~~~~~~~~~~~~~~~~~~
+	# Load table 1
+	#~~~~~~~~~~~~~~~~~~~
+	tab1 = tab_to_dict(tabfile1)
+	#~~~~~~~~~~~~~~~~~~~
+	# Load table 2
+	#~~~~~~~~~~~~~~~~~~~
+	tab2 = tab_to_dict(tabfile2)
+	#~~~~~~~~~~~~~~~~~~~
+	# Do the tests
+	#~~~~~~~~~~~~~~~~~~~
+
+	myresults = collections.defaultdict(lambda : collections.defaultdict(dict))
+
+	plist = []
+	padjlist = []
+	fpkm = 1
+
+
+	
+	for event in tab1:
+		
+
+		#padjlist.append(padj.two_tail)
+		myresults[event]['gene_name'] = tab1[event]['gene_name']
+		myresults[event]['gene_id'] = tab1[event]['gene_id']
+		myresults[event]['eventcode'] = tab1[event]['eventcode']
+		myresults[event]['structure'] = tab1[event]['structure']
+		myresults[event]['transcript_id'] = tab1[event]['transcript_id']
+		myresults[event]['joinstring'] = tab1[event]['joinstring']
+		myresults[event]['inc_sites'] = int(tab1[event]['inc_sites'])
+		myresults[event]['exc_sites'] = int(tab1[event]['exc_sites'])
+		myresults[event]['inccov1'] = int(tab1[event]['inccov'])
+		myresults[event]['exccov1'] = int(tab1[event]['exccov'])
+		myresults[event]['inc1'] = float(tab1[event]['inc'])
+		myresults[event]['exc1'] = float(tab1[event]['exc'])
+		myresults[event]['psi1'] = float(tab1[event]['psi'])
+
+		myresults[event]['inccov2'] = int(tab2[event]['inccov'])
+		myresults[event]['exccov2'] = int(tab2[event]['exccov'])
+		myresults[event]['inc2'] = float(tab2[event]['inc'])
+		myresults[event]['exc2'] = float(tab2[event]['exc'])
+		myresults[event]['psi2'] = float(tab2[event]['psi'])
+
+		myresults[event]['delta_psi'] = myresults[event]['psi1'] - myresults[event]['psi2'] 
+
+		myresults[event]['totalcovpersite1'] = float(tab1[event]['inc']) + float(tab1[event]['exc'])
+		myresults[event]['totalcovpersite2'] = float(tab2[event]['inc']) + float(tab2[event]['exc'])
+		myresults[event]['avgcovpersite'] = (myresults[event]['totalcovpersite1'] + myresults[event]['totalcovpersite2']) / 2
+		
+		#myresults[event]['pval_adj'] = padj.two_tail
+		try: 
+			myresults[event]['fpkm_proportion1'] = tab1[event]['fpkm_proportion']
+		except KeyError:
+			fpkm = 0
+		try: 
+			myresults[event]['fpkm_proportion2'] = tab2[event]['fpkm_proportion']
+		except KeyError:
+			fpkm = 0
+	
+
+		# Apply a cufoff on coverage, report low coverage events as "LowCov"
+		#inccov and excpv must be >= cutoff in either sample.
+		maxinc = max(int(tab1[event]['inccov']),int(tab2[event]['inccov']))
+		maxexc = max(int(tab1[event]['exccov']),int(tab2[event]['exccov']))
+		max1 = max(int(tab1[event]['inccov']),int(tab1[event]['exccov']))
+		max2 = max(int(tab2[event]['inccov']),int(tab2[event]['exccov']))
+		if (maxinc >= covcutoff) and (maxexc >= covcutoff) and (max1 >= covcutoff) and (max2 >= covcutoff):
+			p = pvalue(int(tab1[event]['inccov']), int(tab1[event]['exccov']) , int(tab2[event]['inccov']), int(tab2[event]['exccov']))
+			plist.append(p.two_tail)
+			myresults[event]['pval'] = p.two_tail
+		else:
+			myresults[event]['pval'] = "LowCov"
+		#padj = pvalue(int(tab1[event]['inc_adj']), int(tab1[event]['exc_adj']) , int(tab2[event]['inc_adj']), int(tab2[event]['exc_adj']))
+
+
+
+	#~~~~~~~~~~~~~~~~~~~
+	# FDR correction
+	#~~~~~~~~~~~~~~~~~~~
+	print >> sys.stderr, "[%s] Doing FDR correction" % (spanki_utils.timestamp())
+	alpha = 0.05
+	
+	bh_pvals = fdrcorrection0(plist, alpha=alpha, method='indep')[1]
+	bh_pvals_adj = fdrcorrection0(padjlist, alpha=alpha, method='indep')[1]
+	
+	#myq = collections.defaultdict(lambda : collections.defaultdict(dict))
+	qconv = dict(zip(plist,bh_pvals))
+	qadjconv = dict(zip(padjlist,bh_pvals_adj))
+	
+	#for q in bh_pvals:
+		#if (q < 0.05):  
+			#print >> comp_out, "Q:", q
+			
+	for event in myresults:
+		#print >> comp_out, event, myresults[event]['inc1'], myresults[event]['exc1'], myresults[event]['inc2'], myresults[event]['exc2'], myresults[event]['pval'], qconv[myresults[event]['pval']]
+		if myresults[event]['pval'] == "LowCov":
+			myresults[event]['qval'] = "LowCov"
+		else:
+			myresults[event]['qval'] = qconv[myresults[event]['pval']]
+			#myresults[event]['qval_adj'] = qadjconv[myresults[event]['pval_adj']]
+
+
+	'''
+	Output table
+	The fpkm > 0 is a binomial to indicate whether FPKMs are present (1 means there are FPKMS).
+	'''
+	if fpkm > 0:
+		fieldorder = ['gene_id','gene_name','transcript_id','eventcode','structure','joinstring','inc_sites','exc_sites','inccov1','exccov1','inc1','exc1','psi1','inccov2','exccov2','inc2','exc2','psi2','delta_psi','totalcovpersite1','totalcovpersite2','avgcovpersite','pval','qval','fpkm_proportion1','fpkm_proportion2']
+	else:
+		fieldorder = ['gene_id','gene_name','transcript_id','eventcode','structure','joinstring','inc_sites','exc_sites','inccov1','exccov1','inc1','exc1','psi1','inccov2','exccov2','inc2','exc2','psi2','totalcovpersite1','totalcovpersite2','avgcovpersite','delta_psi','pval','qval']
+	
+	sortfield = 'pval'
+	print_dict_sorted_ordered(myresults,comp_out,sortfield,fieldorder,'event_id')
+	print "[%s] Run completed" % (spanki_utils.timestamp())
+
+	
+if __name__ == "__main__":
+    sys.exit(main())
+

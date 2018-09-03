@@ -1,0 +1,76 @@
+Splicing Analysis Kit (Spanki) 
+--       --       --
+
+Most recent release: 0.5.0
+
+Overview
+==============
+Spanki is a set of tools to facilitate analysis of alternative splicing from
+RNA-SEQ data.  Drawing from multiple published and novel analysis methods,
+Spanki compiles quantitative and qualitative information about junction
+alignments and splicing events.  The basic functions of Spanki are to assess
+confidence in junction alignments, and to quantify and compare splicing events.
+
+
+Getting started
+===============
+
+Please see the manual page for details about installing and usage:
+ http://www.cbcb.umd.edu/software/spanki/manual.html
+
+Spanki has been tested on Mac OSX >= 10.6 and Ubuntu Linux 10.04
+
+Prerequisites
+---------------
+
+Python modules
+~~~~~~~~~~
+Spanki requires the following Python packages (Python will attempt to install them for you):
+
+pyfasta
+pysam
+numpy
+Biopython
+scikits.statsmodels
+fisher
+
+If you encounter problems getting numpy and scipy installed together, we recommend installing the ENTHOUGHT python distribution (http://enthought.com/products/epd.php). 
+
+Other required programs
+~~~~~~~~~~
+samtools http://samtools.sourceforge.net/
+Cufflinks (Spanky uses the gtf_to_sam utility to create a sam representation of a gtf reference) http://cufflinks.cbcb.umd.edu
+
+Required for splicing analysis:
+AStalavista (or a precomputed splicing event file) http://genome.crg.es/astalavista/
+
+Installation
+---------------
+Clone this repo:
+git clone git://github.com/dsturg/Spanki
+
+Then use the python install process:
+	sudo python setup.py install
+
+OR:
+Download the most stable release (See https://github.com/dsturg/Spanki/downloads)
+Decompress and install as described above
+
+
+Example data
+---------------
+A test data set is available to try out the basic Spanki commands.
+You can download it here (~250 MB download):
+http://www.cbcb.umd.edu/software/spanki/testdata.tar.gz
+
+See the file simulation_example.txt for commands to walk
+through the simulation steps, using the test data.
+
+See the file analysis_commands.sh for an example
+run-through for splicing analysis
+
+
+Questions
+---------------
+Contact Dave Sturgill
+dave.sturgill@gmail.com
