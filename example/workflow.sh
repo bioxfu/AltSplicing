@@ -21,6 +21,7 @@ BAM_DIR=~/Project/CFH0003_20180828/RNA-Seq/bam
 GTF=/cluster/home/xfu/Gmatic7/gene/tair10/tair10.gtf
 FASTA=/cluster/home/xfu/Gmatic7/genome/tair10/tair10.fa
 AS=/cluster/home/xfu/Gmatic7/gene/tair10/tair10_sorted.gtf_astalavista.gtf
+ANNO=/cluster/home/xfu/Gmatic7/gene/tair10/tair10_gene_anno.tsv
 
 mkdir spanki_out
 ## Junction alignment evaluation
@@ -62,3 +63,9 @@ cat spanki_out/splicecomp/${SAM1}_vs_${SAM2}/event_compare.out |awk '{if($1=="ev
 cat spanki_out/splicecomp/${SAM3}_vs_${SAM4}/event_compare.out |awk '{if($1=="event_id" || $24<0.05)print}'|grep -v 'Unclassified' > tables/${SAM3}_vs_${SAM4}_event_compare.out
 cat spanki_out/splicecomp/${SAM3}_vs_${SAM1}/event_compare.out |awk '{if($1=="event_id" || $24<0.05)print}'|grep -v 'Unclassified' > tables/${SAM3}_vs_${SAM1}_event_compare.out
 cat spanki_out/splicecomp/${SAM4}_vs_${SAM2}/event_compare.out |awk '{if($1=="event_id" || $24<0.05)print}'|grep -v 'Unclassified' > tables/${SAM4}_vs_${SAM2}_event_compare.out
+
+## gene annotation
+Rscript script/AS_gene_anno.R $ANNO tables/${SAM1}_vs_${SAM2}_event_compare.out
+Rscript script/AS_gene_anno.R $ANNO tables/${SAM3}_vs_${SAM4}_event_compare.out
+Rscript script/AS_gene_anno.R $ANNO tables/${SAM3}_vs_${SAM1}_event_compare.out
+Rscript script/AS_gene_anno.R $ANNO tables/${SAM4}_vs_${SAM2}_event_compare.out
