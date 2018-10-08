@@ -1,19 +1,20 @@
-SAM1=nramp1_-Mn
-SAM2=nramp1_+Mn
-SAM3=mdg10nramp1_-Mn
-SAM4=mdg10nramp1_+Mn
-SAM1_1=nramp1-1_-Mn
-SAM1_2=nramp1-2_-Mn
-SAM1_3=nramp1-3_-Mn
-SAM2_1=nramp1-1_+Mn
-SAM2_2=nramp1-2_+Mn
-SAM2_3=nramp1-3_+Mn
-SAM3_1=mdg10nramp1-1_-Mn
-SAM3_2=mdg10nramp1-2_-Mn
-SAM3_3=mdg10nramp1-3_-Mn
-SAM4_1=mdg10nramp1-1_+Mn
-SAM4_2=mdg10nramp1-2_+Mn
-SAM4_3=mdg10nramp1-3_+Mn
+SAM1=nramp1
+SAM2=nramp1_Mn
+SAM3=mdg10nramp1
+SAM4=mdg10nramp1_Mn
+SAM1_1=nramp1_1
+SAM1_2=nramp1_2
+SAM1_3=nramp1_3
+SAM2_1=nramp1_Mn_1
+SAM2_2=nramp1_Mn_2
+SAM2_3=nramp1_Mn_3
+SAM3_1=mdg10nramp1_1
+SAM3_2=mdg10nramp1_2
+SAM3_3=mdg10nramp1_3
+SAM4_1=mdg10nramp1_Mn_1
+SAM4_2=mdg10nramp1_Mn_2
+SAM4_3=mdg10nramp1_Mn_3
+
 
 BAM_DIR=~/Project/CFH0003_20180828/RNA-Seq/bam
 
@@ -57,15 +58,14 @@ splicecomp -a spanki_out/reps_merged/${SAM3}.juncs_events/events.out -b spanki_o
 splicecomp -a spanki_out/reps_merged/${SAM3}.juncs_events/events.out -b spanki_out/reps_merged/${SAM1}.juncs_events/events.out -o spanki_out/splicecomp/${SAM3}_vs_${SAM1}
 splicecomp -a spanki_out/reps_merged/${SAM4}.juncs_events/events.out -b spanki_out/reps_merged/${SAM2}.juncs_events/events.out -o spanki_out/splicecomp/${SAM4}_vs_${SAM2}
 
-## filter AS events: p-value < 0.05
+## combine and filter AS events: p-value < 0.05
 mkdir tables
-cat spanki_out/splicecomp/${SAM1}_vs_${SAM2}/event_compare.out |awk '{if($1=="event_id" || $24<0.05)print}'|grep -v 'Unclassified' > tables/${SAM1}_vs_${SAM2}_event_compare.out
-cat spanki_out/splicecomp/${SAM3}_vs_${SAM4}/event_compare.out |awk '{if($1=="event_id" || $24<0.05)print}'|grep -v 'Unclassified' > tables/${SAM3}_vs_${SAM4}_event_compare.out
-cat spanki_out/splicecomp/${SAM3}_vs_${SAM1}/event_compare.out |awk '{if($1=="event_id" || $24<0.05)print}'|grep -v 'Unclassified' > tables/${SAM3}_vs_${SAM1}_event_compare.out
-cat spanki_out/splicecomp/${SAM4}_vs_${SAM2}/event_compare.out |awk '{if($1=="event_id" || $24<0.05)print}'|grep -v 'Unclassified' > tables/${SAM4}_vs_${SAM2}_event_compare.out
+cat spanki_out/splicecomp/${SAM1}_vs_${SAM2}/event_compare.out |grep -v 'Unclassified'|cut -f2,4,5,7,23,24,25|awk '{print $4"\t"$3"\t"$1"\t"$2"\t"$5"\t"$6"\t"$7}' > tables/${SAM1}_vs_${SAM2}_event_compare.out
+cat spanki_out/splicecomp/${SAM3}_vs_${SAM4}/event_compare.out |grep -v 'Unclassified'|cut -f2,4,5,7,23,24,25|awk '{print $4"\t"$3"\t"$1"\t"$2"\t"$5"\t"$6"\t"$7}' > tables/${SAM3}_vs_${SAM4}_event_compare.out
+cat spanki_out/splicecomp/${SAM3}_vs_${SAM1}/event_compare.out |grep -v 'Unclassified'|cut -f2,4,5,7,23,24,25|awk '{print $4"\t"$3"\t"$1"\t"$2"\t"$5"\t"$6"\t"$7}' > tables/${SAM3}_vs_${SAM1}_event_compare.out
+cat spanki_out/splicecomp/${SAM4}_vs_${SAM2}/event_compare.out |grep -v 'Unclassified'|cut -f2,4,5,7,23,24,25|awk '{print $4"\t"$3"\t"$1"\t"$2"\t"$5"\t"$6"\t"$7}' > tables/${SAM4}_vs_${SAM2}_event_compare.out
+
+Rscript script/merge_AS_out.R ${SAM1}_vs_${SAM2} ${SAM3}_vs_${SAM4} ${SAM3}_vs_${SAM1} ${SAM4}_vs_${SAM2}
 
 ## gene annotation
-Rscript script/AS_gene_anno.R $ANNO tables/${SAM1}_vs_${SAM2}_event_compare.out
-Rscript script/AS_gene_anno.R $ANNO tables/${SAM3}_vs_${SAM4}_event_compare.out
-Rscript script/AS_gene_anno.R $ANNO tables/${SAM3}_vs_${SAM1}_event_compare.out
-Rscript script/AS_gene_anno.R $ANNO tables/${SAM4}_vs_${SAM2}_event_compare.out
+Rscript script/AS_gene_anno.R $ANNO tables/merge_AS_out
